@@ -1,6 +1,6 @@
 {% extends 'base.html.twig' %}
 
-{% block title %}Hello ProductsController!{% endblock %}
+{% block title %}Product list{% endblock %}
 
 {% block body %}
 <style>
@@ -9,12 +9,12 @@
 </style>
 
 <div class="example-wrapper">
-    <h1>Hello {{ controller_name }}! ✅</h1>
+    <h1>Our product list:</h1>
 
-    This friendly message is coming from:
     <ul>
-        <li>Your controller at <code><a href="{{ '/home/vit/kt-team/src/Controller/ProductsController.php'|file_link(0) }}">src/Controller/ProductsController.php</a></code></li>
-        <li>Your template at <code><a href="{{ '/home/vit/kt-team/templates/products/index.html.twig'|file_link(0) }}">templates/products/index.html.twig</a></code></li>
+    {% for product in products %}
+        <li>{{ product.name }}</li>
+    {% endfor %}
     </ul>
 </div>
 {% endblock %}
