@@ -15,7 +15,7 @@ class ProductsControllerTest extends WebTestCase
         $this->assertResponseIsSuccessful();
 
         $this->assertCount(
-            1,
+            20,
             $crawler->filter('li'),
             'The page displays the right number of products.'
         );
