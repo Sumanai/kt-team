@@ -3,31 +3,39 @@
 namespace App\Controller;
 
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
+use Symfony\Component\Form\Extension\Core\Type\FileType;
+use Symfony\Component\HttpFoundation\File\UploadedFile;
 use Symfony\Component\HttpFoundation\Request;
 use Symfony\Component\HttpFoundation\Response;
 use Symfony\Component\Routing\Annotation\Route;
 
 class ImportController extends AbstractController
 {
-    #[Route('/import', methods: ['GET'], name: 'app_import_page')]
-    public function index(): Response
+    #[Route('/import', name: 'app_import')]
+    public function index(Request $request): Response
     {
-        return $this->render('import/index.html.twig', [
-            'controller_name' => 'ImportController',
-        ]);
-    }
+        // TODO: Вынести форму в отдельный класс
+        $form = $this->createFormBuilder()
+            ->add('file', FileType::class)
+            ->setMethod('POST')
+            ->getForm();
+        $form->handleRequest($request);
 
-    #[Route('/import', methods: ['POST'], name: 'app_import_file')]
-    public function import(Request $request): Response
-    {
-        $file = $request->files[0] ?? null;
+        if ($form->isSubmitted() && $form->isValid()) {
+            /** @var UploadedFile|null */
+            $file = $form['file']->getData();
 
-        if (!$file) {
-            throw new \Exception('File is needed');
+            if (!$file) {
+                throw new \Exception('File is needed');
+            }
+
+            if ($file->getMimeType() !== 'text/xml') {
+                throw new \Exception('Wrong file type');
+            }
         }
 
-        return $this->json([
-            'success' => true,
+        return $this->renderForm('import/index.html.twig', [
+            'form' => $form,
         ]);
     }
 }
