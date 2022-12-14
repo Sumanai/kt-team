@@ -2,6 +2,7 @@
 
 namespace App\Controller;
 
+use App\Service\ParseXmlToProduct;
 use Symfony\Bundle\FrameworkBundle\Controller\AbstractController;
 use Symfony\Component\Form\Extension\Core\Type\FileType;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
@@ -12,7 +13,7 @@ use Symfony\Component\Routing\Annotation\Route;
 class ImportController extends AbstractController
 {
     #[Route('/import', name: 'app_import')]
-    public function index(Request $request): Response
+    public function index(Request $request, ParseXmlToProduct $parser): Response
     {
         // TODO: Вынести форму в отдельный класс
         $form = $this->createFormBuilder()
@@ -29,9 +30,7 @@ class ImportController extends AbstractController
                 throw new \Exception('File is needed');
             }
 
-            if ($file->getMimeType() !== 'text/xml') {
-                throw new \Exception('Wrong file type');
-            }
+            $parser->parse($file);
         }
 
         return $this->renderForm('import/index.html.twig', [
