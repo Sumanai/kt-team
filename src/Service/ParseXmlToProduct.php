@@ -2,6 +2,12 @@
 
 namespace App\Service;
 
+use App\Entity\Category;
+use App\Entity\Product;
+use App\Kernel;
+use App\Repository\CategoryRepository;
+use App\Repository\ProductRepository;
+use Doctrine\ORM\EntityManagerInterface;
 use Symfony\Component\HttpFoundation\File\UploadedFile;
 use XMLParser;
 
@@ -11,8 +17,23 @@ class ParseXmlToProduct
     private array $data = [];
     private string $key = '';
 
-    public function __construct()
-    {
+    /** @var Category[] */
+    private array $allCategories;
+
+    private EntityManagerInterface $manager;
+
+    public function __construct(
+        private CategoryRepository $categories,
+        private ProductRepository $products,
+        private Kernel $kernel,
+    ) {
+
+        // $this->allCategories = array_combine(array_column($this->allCategories, 'code'), $this->allCategories);
+        foreach ($categories->findAll() as $category) {
+            $this->allCategories[$category->getCode()] = $category;
+        }
+
+        $this->manager = $kernel->getContainer()->get('doctrine')->getManager();
     }
 
     public function parse(UploadedFile $file)
@@ -37,6 +58,12 @@ class ParseXmlToProduct
         xml_parse($parser, '', true);
         xml_parser_free($parser);
         fclose($stream);
+
+        // Для значений, которые не дошли до 1000
+        $this->createProducts();
+
+        // Вручную закатываем солнце
+        $this->manager->flush();
     }
 
     public function startXML(XMLParser $parser, string $name, array $attr): void
@@ -54,7 +81,7 @@ class ParseXmlToProduct
             $this->currentProduct++;
 
             if ($this->currentProduct >= 1000) {
-                // TODO: Спарсить список перед сбросом
+                $this->createProducts();
                 $this->currentProduct = 0;
                 $this->data = [];
                 $this->key = '';
@@ -74,5 +101,56 @@ class ParseXmlToProduct
         }
 
         $this->data[$this->currentProduct][$this->key] .= $data;
+    }
+
+    private function createProducts(): void
+    {
+        foreach ($this->data as $productData) {
+            $productCategory = $this->findCategory($productData['category']);
+            $newProduct = new Product();
+            $newProduct
+                ->setName($productData['name'])
+                ->setDescription($productData['description'])
+                ->setWeight($this->parseWeight($productData['weight']))
+                ->setCategory($productCategory);
+
+            $this->products->save($newProduct);
+        }
+    }
+
+    private function findCategory(string $categoryName): Category
+    {
+        $categoryCode = $this->getCategoryCodeByName($categoryName);
+        $category = $this->allCategories[$categoryCode] ?? null;
+
+        if ($category) {
+            return $category;
+        }
+
+        $category = new Category();
+        $category
+            ->setCode($categoryCode)
+            ->setName($categoryName);
+
+        $this->categories->save($category);
+        $this->allCategories[$category->getCode()] = $category;
+
+        return $category;
+    }
+
+    private function getCategoryCodeByName(string $name): string
+    {
+        return strtolower(str_replace(' ', '_', $name));
+    }
+
+    private function parseWeight(string $strWeight): int
+    {
+        [$weight, $measure] = explode(' ', $strWeight);
+
+        if ($measure === 'kg') {
+            $weight *= 1000;
+        }
+
+        return (int) $weight;
     }
 }
